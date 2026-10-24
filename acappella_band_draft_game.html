@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アカペラバンド作成ゲーム (A cappella Band Builder)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #0b0f19 0%, #17153b 50%, #2e1038 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        .glass-panel {
+            background: rgba(23, 28, 48, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            border-color: rgba(168, 85, 247, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px -5px rgba(168, 85, 247, 0.25);
+        }
+        .glass-card.selected {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
+            border-color: #c084fc;
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.45);
+        }
+        .stage-glow {
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.25), inset 0 0 30px rgba(99, 102, 241, 0.2);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(168, 85, 247, 0.5);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(168, 85, 247, 0.8);
+        }
+        @keyframes pulse-slow {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 2s infinite;
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <!-- TOP HEADER -->
+    <header class="max-w-7xl mx-auto w-full mb-6 flex flex-wrap justify-between items-center gap-4 glass-panel p-4 rounded-2xl shadow-xl">
+        <div class="flex items-center gap-3">
+            <div class="p-3 bg-gradient-to-tr from-purple-600 via-pink-500 to-indigo-500 rounded-xl shadow-lg shadow-purple-900/50">
+                <i data-lucide="mic" class="w-7 h-7 text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-200">
+                    アカペラバンド作成ゲーム <span class="text-xs px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-600/40">PRO Ver.</span>
+                </h1>
+                <p class="text-xs text-slate-400">A cappella Band Builder </p>
+            </div>
+        </div>
+
+        <!-- Mode & Sound Controls -->
+        <div class="flex items-center gap-3 flex-wrap">
+            <div class="bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-700/60 flex items-center gap-2 text-xs text-slate-300">
+                <span id="current-mode-badge" class="px-2 py-0.5 rounded bg-purple-900/80 text-purple-300 font-bold">SOLO VS CPU</span>
+                <span id="room-code-display" class="hidden font-mono text-amber-400 font-semibold">ROOM: -</span>
+            </div>
+            <button id="btn-bgm-toggle" onclick="toggleBGM()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-sm">
+                <i data-lucide="music" class="w-4 h-4 text-purple-400"></i>
+                <span id="bgm-status-text">BGM : ON</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto w-full flex-1 mb-8">
+
+        <!-- STEP 1: BAND SETUP -->
+        <section id="step-1" class="glass-panel p-6 md:p-8 rounded-3xl shadow-2xl space-y-8 max-w-3xl mx-auto">
+            <div class="text-center space-y-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-purple-400 bg-purple-950/60 px-3 py-1 rounded-full border border-purple-800/50">Step 1 / 4</span>
+                <h2 class="text-2xl md:text-3xl font-extrabold text-white">バンド構成の設定</h2>
+                <p class="text-sm text-slate-400">メンバー人数とプレイモードを設定してバンドドラフトを開始します</p>
+            </div>
+
+            <!-- Play Mode Selector -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">ゲームモード</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-mode-cpu" onclick="setPlayMode('cpu')" class="p-4 rounded-xl border-2 border-purple-500 bg-purple-950/40 text-left transition relative">
+                        <div class="font-bold text-purple-200 text-sm flex items-center gap-2">
+                            <i data-lucide="bot" class="w-4 h-4 text-purple-400"></i> Solo vs CPU
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">CPUと指名争奪ドラフト</p>
+                    </button>
+                    <button id="btn-mode-room" onclick="setPlayMode('room')" class="p-4 rounded-xl border-2 border-slate-700 bg-slate-900/40 text-left transition relative">
+                        <div class="font-bold text-slate-300 text-sm flex items-center gap-2">
+                            <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> Room Code Match
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">みんなで対戦・シミュレーション</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- CPU Count / Room Code Inputs -->
+            <div id="cpu-count-container" class="space-y-2">
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">対戦CPUバンド数 (1〜5)</label>
+                <div class="flex items-center gap-3">
+                    <input type="range" id="cpu-count-range" min="1" max="5" value="3" class="w-full accent-purple-500" oninput="document.getElementById('cpu-count-val').innerText = this.value">
+                    <span id="cpu-count-val" class="font-bold text-purple-300 text-lg w-8 text-center">3</span>
+                </div>
+            </div>
+
+            <div id="room-code-container" class="hidden space-y-2">
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">ルームコード</label>
+                <div class="flex gap-2">
+                    <input type="text" id="room-code-input" placeholder="例: ACAP-8823" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2 text-sm text-amber-300 font-mono focus:outline-none focus:border-purple-500">
+                    <button onclick="generateRandomRoomCode()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold rounded-xl transition whitespace-nowrap">自動生成</button>
+                </div>
+            </div>
+
+            <!-- Member Count Options -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">バンド編成人数</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="setMemberCount(5)" id="btn-count-5" class="btn-count p-4 rounded-xl border-2 border-slate-700 bg-slate-900/50 text-center transition">
+                        <div class="text-xl font-black text-white">5人</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Lead, 1st, 2nd, 3rd, Bass</div>
+                    </button>
+                    <button onclick="setMemberCount(6)" id="btn-count-6" class="btn-count p-4 rounded-xl border-2 border-purple-500 bg-purple-950/40 text-center transition">
+                        <div class="text-xl font-black text-purple-200">6人</div>
+                        <div class="text-[10px] text-purple-300/80 mt-0.5">Lead, 1~3rd, Bass, Perc.またはLead, 1~4th, Bass</div>
+                    </button>
+                    <button onclick="setMemberCount(7)" id="btn-count-7" class="btn-count p-4 rounded-xl border-2 border-slate-700 bg-slate-900/50 text-center transition">
+                        <div class="text-xl font-black text-white">7人</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Lead, 1~4th, Bass, Perc.</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Percussion Toggle -->
+            <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                <div>
+                    <div class="text-sm font-bold text-slate-200">ボイスパーカッション (Perc.)の 有無</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="toggle-perc" checked onchange="togglePercussion(this.checked)" class="sr-only peer">
+                    <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+            </div>
+
+            <button onclick="goToStep2()" class="w-full py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:opacity-95 text-white font-black text-lg rounded-xl shadow-lg shadow-purple-900/40 transition">
+                ジャンル選択へ進む <i data-lucide="arrow-right" class="inline w-5 h-5 ml-1"></i>
+            </button>
+        </section>
+
+        <!-- STEP 2: GENRE SELECTION -->
+        <section id="step-2" class="hidden glass-panel p-6 md:p-8 rounded-3xl shadow-2xl space-y-8 max-w-4xl mx-auto">
+            <div class="text-center space-y-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-purple-400 bg-purple-950/60 px-3 py-1 rounded-full border border-purple-800/50">Step 2 / 4</span>
+                <h2 class="text-2xl md:text-3xl font-extrabold text-white">演奏楽曲ジャンルの決定</h2>
+                <p class="text-sm text-slate-400">バンドの演奏ジャンルを選択します。得意ジャンルのパートはボーナスを獲得します</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="genre-grid">
+                <!-- Western/R&B -->
+                <button onclick="selectGenre('洋楽')" class="genre-card glass-card p-5 rounded-2xl text-left border border-slate-700/80 hover:border-purple-500 transition group">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 group-hover:scale-110 transition"><i data-lucide="disc" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="font-black text-lg text-amber-200">洋楽</h3>
+                            <span class="text-[10px] text-amber-400/80 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-800/40">グルーヴ＆フェイク重視</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">グルーヴ感とアドリブ表現力が問われるアグレッシブなスタイル。リズムセクションの安定性が鍵。</p>
+                </button>
+
+                <!-- J-POP -->
+                <button onclick="selectGenre('J-POP')" class="genre-card glass-card p-5 rounded-2xl text-left border border-slate-700/80 hover:border-purple-500 transition group">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="p-2.5 rounded-xl bg-pink-500/20 text-pink-400 group-hover:scale-110 transition"><i data-lucide="sparkles" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="font-black text-lg text-pink-200">J-POP</h3>
+                            <span class="text-[10px] text-pink-400/80 bg-pink-950/50 px-2 py-0.5 rounded border border-pink-800/40">キャッチー＆コーラス調和</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">キャッチーなリードメロディと綺麗なコーラスアンサンブルが魅力。親しみやすさと安定感。</p>
+                </button>
+
+                <!-- Ballad -->
+                <button onclick="selectGenre('バラード')" class="genre-card glass-card p-5 rounded-2xl text-left border border-slate-700/80 hover:border-purple-500 transition group">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-400 group-hover:scale-110 transition"><i data-lucide="heart" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="font-black text-lg text-cyan-200">バラード</h3>
+                            <span class="text-[10px] text-cyan-400/80 bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-800/40">ピッチ精度＆感情表現</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">正確なハーモニーピッチと豊かな感情表現が求められる感動的な重厚アレンジメント。</p>
+                </button>
+
+                <!-- Jazz/Gospel -->
+                <button onclick="selectGenre('Jazz/Gospel')" class="genre-card glass-card p-5 rounded-2xl text-left border border-slate-700/80 hover:border-purple-500 transition group">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 group-hover:scale-110 transition"><i data-lucide="music-2" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="font-black text-lg text-purple-200">Jazz / Gospel</h3>
+                            <span class="text-[10px] text-purple-400/80 bg-purple-950/50 px-2 py-0.5 rounded border border-purple-800/40">複雑テンション＆パワフル</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">高次元のテンションコードと圧倒的な歌声のダイナミクスが融合するソウルフルスタイル。</p>
+                </button>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="goToStep1()" class="w-1/3 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl border border-slate-700 transition">戻る</button>
+                <button id="btn-to-step-3" disabled onclick="goToStep3()" class="w-2/3 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-50 cursor-not-allowed text-white font-black rounded-xl shadow-lg transition">
+                    メンバー指名ドラフトへ <i data-lucide="arrow-right" class="inline w-5 h-5 ml-1"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- STEP 3: INTERACTIVE DRAFT -->
+        <section id="step-3" class="hidden space-y-6">
+            <!-- Top Status Bar -->
+            <div class="glass-panel p-4 rounded-2xl flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-purple-400 bg-purple-950/80 px-3 py-1 rounded-full border border-purple-800/60">Step 3 / 4</span>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-lg font-black text-white" id="draft-current-part-title">パート指名: Lead</h2>
+                            <!-- ジャンル表示バッジを追加 -->
+                            <span id="selected-genre-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                ジャンル: 未選択
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">希望メンバーを選択して指名を決定してください（重複時は抽選）</p>
+                    </div>
+                </div>
+
+                <!-- Part Progress Indicator -->
+                <div class="flex items-center gap-1.5" id="part-progress-dots"></div>
+            </div>
+
+            <!-- SEARCH & FILTER BAR -->
+            <div class="glass-panel p-4 rounded-2xl flex flex-wrap gap-3 items-center justify-between">
+                <!-- Search Box -->
+                <div class="relative flex-1 min-w-[200px]">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="candidate-search" oninput="filterCandidates()" placeholder="名前・能力検索..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                </div>
+
+                <!-- Filter Part Dropdown -->
+                <select id="filter-part" onchange="filterCandidates()" class="bg-slate-900/80 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-300 focus:outline-none">
+                    <option value="ALL">本適性: すべて</option>
+                    <option value="Lead">Lead (10)</option>
+                    <option value="1st Chorus">1st Chorus (10)</option>
+                    <option value="2nd Chorus">2nd Chorus (10)</option>
+                    <option value="3rd Chorus">3rd Chorus (10)</option>
+                    <option value="4th Chorus">4th Chorus (10)</option>
+                    <option value="Bass">Bass (10)</option>
+                    <option value="Percussion">Percussion (10)</option>
+                </select>
+
+                <!-- Filter Sub Part Dropdown -->
+                <select id="filter-subpart" onchange="filterCandidates()" class="bg-slate-900/80 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-300 focus:outline-none">
+                    <option value="ALL">サブ適性: すべて</option>
+                    <option value="Lead">Lead サブ</option>
+                    <option value="1st Chorus">1st Chorus サブ</option>
+                    <option value="2nd Chorus">2nd Chorus サブ</option>
+                    <option value="3rd Chorus">3rd Chorus サブ</option>
+                    <option value="4th Chorus">4th Chorus サブ</option>
+                    <option value="Bass">Bass サブ</option>
+                    <option value="Percussion">Percussion サブ</option>
+                </select>
+
+                <!-- Filter Genre Dropdown -->
+                <select id="filter-genre" onchange="filterCandidates()" class="bg-slate-900/80 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-300 focus:outline-none">
+                    <option value="ALL">得意ジャンル: すべて</option>
+                    <option value="洋楽">洋楽</option>
+                    <option value="J-POP">J-POP</option>
+                    <option value="バラード">バラード</option>
+                    <option value="Jazz/Gospel">Jazz/Gospel</option>
+                </select>
+
+                <!-- Reset Filter Button -->
+                <button onclick="resetCandidateFilters()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-400 hover:text-slate-200 rounded-xl transition">
+                    リセット
+                </button>
+            </div>
+
+            <!-- Candidate Grid & Current My Band -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Candidate Cards Grid (3 cols on lg) -->
+                <div class="lg:col-span-3 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="users" class="w-4 h-4 text-purple-400"></i>
+                            候補メンバーリスト (<span id="candidate-count-display">70</span>名)
+                        </h3>
+                        <span class="text-xs text-purple-300 bg-purple-950/60 px-2.5 py-1 rounded-full border border-purple-800/40">
+                            現在選択中: <strong id="selected-candidate-name-badge" class="text-amber-300">未選択</strong>
+                        </span>
+                    </div>
+
+                    <!-- Scrollable Grid -->
+                    <div id="candidates-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 max-h-[620px] overflow-y-auto pr-1">
+                        <!-- Dynamic Candidate Cards -->
+                    </div>
+                </div>
+
+                <!-- Right Sidebar: Current Band Roster & Draft Confirm -->
+                <div class="space-y-4">
+                    <div class="glass-panel p-5 rounded-2xl space-y-4">
+                        <h3 class="text-sm font-black text-slate-200 border-b border-slate-700/60 pb-2 flex items-center gap-2">
+                            <i data-lucide="music" class="w-4 h-4 text-indigo-400"></i> My Band 結成状況
+                        </h3>
+                        <div id="my-band-roster" class="space-y-2">
+                            <!-- Dynamic roster slots -->
+                        </div>
+
+                        <button id="btn-confirm-nomination" disabled onclick="confirmPartNomination()" class="w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 opacity-50 cursor-not-allowed text-white font-black text-sm rounded-xl shadow-lg transition">
+                            指名を確定して次へ <i data-lucide="check-circle" class="inline w-4 h-4 ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 4: PERFORMANCE EVALUATION & RESULTS -->
+        <section id="step-4" class="hidden glass-panel p-6 md:p-8 rounded-3xl shadow-2xl space-y-8 max-w-5xl mx-auto">
+            <div class="text-center space-y-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-800/50">Live Stage & Final Results</span>
+                <h2 class="text-3xl md:text-4xl font-black text-white">ライブステージ演奏 &amp; AI判定</h2>
+                <p class="text-sm text-slate-400">リアルタイム試聴ミキサーと審査員スコア判定</p>
+            </div>
+
+            <!-- LIVE AUDIO MIXER & STAGE VISUALIZER -->
+            <div class="bg-slate-950/80 border border-purple-500/30 rounded-3xl p-6 stage-glow space-y-6 relative overflow-hidden">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="p-2 rounded-xl bg-purple-900/50 text-purple-300 border border-purple-700/50">
+                            <i data-lucide="sliders" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h3 class="font-extrabold text-base text-white">ライブ演奏ミキサー (Web Audio Realtime)</h3>
+                            <p class="text-xs text-slate-400">結成したMy Bandのサウンドシミュレーション</p>
+                        </div>
+                    </div>
+                    <button id="btn-play-live" onclick="toggleLivePerformance()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-950/50 flex items-center gap-2 transition">
+                        <i data-lucide="play" class="w-4 h-4 fill-current"></i> <span id="live-btn-text">ライブ演奏を再生</span>
+                    </button>
+                </div>
+
+                <!-- Visualizer Equalizer Bar -->
+                <div id="live-visualizer" class="h-16 bg-slate-900/90 rounded-2xl border border-slate-800 flex items-end justify-between px-4 py-2 gap-1">
+                    <!-- Dynamic Sound Waves -->
+                </div>
+
+                <!-- Part Fader Controls -->
+                <div id="live-fader-controls" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                    <!-- Dynamic Part Mixers -->
+                </div>
+            </div>
+
+            <!-- Leaderboard / Band Rankings -->
+            <div id="ranking-list" class="space-y-4">
+                <!-- Dynamic ranking cards -->
+            </div>
+
+            <!-- Detailed Performance Breakdown -->
+            <div id="performance-breakdown-container" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
+                    <i data-lucide="award" class="w-5 h-5 text-amber-400"></i> 審査員評価コメント &amp; 特殊コンボ発生
+                </h3>
+                <div id="judges-feedback" class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                    <!-- Dynamic feedback content -->
+                </div>
+            </div>
+
+            <!-- Share & Restart Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 pt-2">
+                <button onclick="shareBandResult()" class="sm:w-1/2 py-4 bg-slate-800 hover:bg-slate-700 border border-purple-500/50 text-purple-200 font-bold text-base rounded-xl transition flex items-center justify-center gap-2 shadow-lg">
+                    <i data-lucide="share-2" class="w-5 h-5"></i> バンド結果をコピーして共有
+                </button>
+                <button onclick="restartGame()" class="sm:w-1/2 py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:opacity-95 text-white font-black text-base rounded-xl shadow-xl transition flex items-center justify-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-5 h-5"></i> 新しいバンドを作成する
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- LOTTERY DRAW MODAL -->
+    <div id="lottery-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-panel p-6 md:p-8 rounded-3xl max-w-md w-full space-y-6 text-center border-2 border-amber-500/40 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <div>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-950/80 px-3 py-1 rounded-full border border-amber-800/60">競合が発生！指名重複</span>
+                <h3 id="lottery-candidate-title" class="text-xl font-black text-white mt-2">メンバーの指名権くじ引き</h3>
+                <p class="text-xs text-slate-400 mt-1">複数のバンドが同じメンバーを指名しました。くじ引きで獲得チームを決定します！</p>
+            </div>
+
+            <!-- Competing Teams Badges -->
+            <div class="space-y-1.5">
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">競合バンド</div>
+                <div id="competing-bands-list" class="flex flex-wrap justify-center items-center gap-2"></div>
+            </div>
+
+            <!-- Interactive Lottery Box -->
+            <div class="flex justify-center py-2">
+                <div id="lottery-box" class="w-40 h-40 rounded-2xl border-4 border-amber-400/80 bg-gradient-to-tr from-amber-950 via-amber-900 to-amber-950 flex flex-col items-center justify-center text-amber-200 font-black shadow-2xl transition-all duration-500 relative cursor-pointer group">
+                    <span id="lottery-box-icon" class="text-5xl mb-2 transition-transform duration-300 group-hover:scale-110">📦</span>
+                    <span id="lottery-box-text" class="text-xs font-bold">くじ引き箱</span>
+                    <span id="lottery-result-badge" class="hidden text-xl font-black mt-1"></span>
+                </div>
+            </div>
+
+            <button id="btn-start-lottery" onclick="executeLotteryDraw()" class="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:opacity-95 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-950/50 transition flex items-center justify-center gap-2">
+                <i data-lucide="dices" class="w-5 h-5"></i> くじを引く！
+            </button>
+        </div>
+    </div>
+
+    <!-- RESELECTION MODAL (When Lottery Lost) -->
+    <div id="reselect-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col space-y-4 border-2 border-rose-500/40 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-rose-400 bg-rose-950/80 px-2.5 py-0.5 rounded-full border border-rose-800/60">外れくじ！再指名</span>
+                    <h3 class="text-lg font-black text-white mt-1">パート [<span id="reselect-part-title" class="text-amber-300"></span>] の再指名選択</h3>
+                    <p class="text-xs text-slate-400">残留候補メンバーから再度希望者を選んで指名してください</p>
+                </div>
+                <span class="text-xs text-purple-300 bg-purple-950/60 px-3 py-1 rounded-full border border-purple-800/40">
+                    現在選択中: <strong id="reselect-selected-name-badge" class="text-amber-300">未選択</strong>
+                </span>
+            </div>
+
+            <!-- Search & Filter Bar for Reselection -->
+            <div class="glass-panel p-3 rounded-xl flex flex-wrap gap-2 items-center justify-between text-xs">
+                <div class="relative flex-1 min-w-[150px]">
+                    <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="reselect-candidate-search" oninput="filterReselectCandidates()" placeholder="名前・能力検索..." class="w-full bg-slate-900/80 border border-slate-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                </div>
+                <select id="reselect-filter-part" onchange="filterReselectCandidates()" class="bg-slate-900/80 border border-slate-700 text-xs rounded-lg px-2 py-1.5 text-slate-300 focus:outline-none">
+                    <option value="ALL">本適性: すべて</option>
+                    <option value="Lead">Lead</option>
+                    <option value="1st Chorus">1st Chorus</option>
+                    <option value="2nd Chorus">2nd Chorus</option>
+                    <option value="3rd Chorus">3rd Chorus</option>
+                    <option value="4th Chorus">4th Chorus</option>
+                    <option value="Bass">Bass</option>
+                    <option value="Percussion">Percussion</option>
+                </select>
+                <select id="reselect-filter-subpart" onchange="filterReselectCandidates()" class="bg-slate-900/80 border border-slate-700 text-xs rounded-lg px-2 py-1.5 text-slate-300 focus:outline-none">
+                    <option value="ALL">サブ適性: すべて</option>
+                    <option value="Lead">Lead サブ</option>
+                    <option value="1st Chorus">1st Chorus サブ</option>
+                    <option value="2nd Chorus">2nd Chorus サブ</option>
+                    <option value="3rd Chorus">3rd Chorus サブ</option>
+                    <option value="4th Chorus">4th Chorus サブ</option>
+                    <option value="Bass">Bass サブ</option>
+                    <option value="Percussion">Percussion サブ</option>
+                </select>
+                <select id="reselect-filter-genre" onchange="filterReselectCandidates()" class="bg-slate-900/80 border border-slate-700 text-xs rounded-lg px-2 py-1.5 text-slate-300 focus:outline-none">
+                    <option value="ALL">得意ジャンル: すべて</option>
+                    <option value="洋楽">洋楽</option>
+                    <option value="J-POP">J-POP</option>
+                    <option value="バラード">バラード</option>
+                    <option value="Jazz/Gospel">Jazz/Gospel</option>
+                </select>
+                <button onclick="resetReselectCandidateFilters()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">リセット</button>
+            </div>
+
+            <!-- Candidate Grid for Reselection -->
+            <div class="flex-1 overflow-y-auto pr-1">
+                <div class="text-[10px] text-slate-400 font-bold mb-2">残りの指名可能メンバー (<span id="reselect-candidate-count-display">0</span>名)</div>
+                <div id="reselect-candidates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+            </div>
+
+            <!-- Confirm Reselection Button -->
+            <button id="btn-confirm-reselection" disabled onclick="confirmReselectionChoice()" class="w-full py-3 bg-gradient-to-r from-rose-600 via-purple-600 to-rose-600 opacity-50 cursor-not-allowed text-white font-black text-sm rounded-xl shadow-lg transition">
+                再指名を確定する <i data-lucide="check-circle" class="inline w-4 h-4 ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- GAME ENGINE LOGIC & AUDIO SYNTHESIS -->
+    <script>
+        // ==========================================
+        // 1. GLOBAL STATE & AUDIO SYNTHESIS ENGINE
+        // ==========================================
+        let audioCtx = null;
+        let isBgmPlaying = true;
+        let bgmTimer = null;
+        let livePerformanceTimer = null;
+        let isLivePlaying = false;
+        let partGainNodes = {};
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleBGM() {
+            initAudioContext();
+            isBgmPlaying = !isBgmPlaying;
+            const btnText = document.getElementById('bgm-status-text');
+
+            if (isBgmPlaying) {
+                if (btnText) btnText.innerText = "BGM / VOICE: ON";
+                playBGMForGenre(gameState.selectedGenre || 'J-POP');
+            } else {
+                if (btnText) btnText.innerText = "BGM / VOICE: OFF";
+                stopBGM();
+                if (isLivePlaying) stopLivePerformance();
+            }
+        }
+
+        function stopBGM() {
+            if (bgmTimer) {
+                clearInterval(bgmTimer);
+                bgmTimer = null;
+            }
+        }
+
+        function playBGMForGenre(genre) {
+            stopBGM();
+            if (!isBgmPlaying || isLivePlaying) return;
+            initAudioContext();
+            if (!audioCtx) return;
+
+            const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+            let step = 0;
+
+            bgmTimer = setInterval(() => {
+                if (!isBgmPlaying || isLivePlaying) return;
+                const freq = scale[step % scale.length];
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+
+                step = (step + 1) % scale.length;
+            }, 380);
+        }
+
+        // Live Performance Synth Engine
+        function toggleLivePerformance() {
+            if (isLivePlaying) {
+                stopLivePerformance();
+            } else {
+                startLivePerformance();
+            }
+        }
+
+        function startLivePerformance() {
+            initAudioContext();
+            if (!audioCtx) return;
+            stopBGM();
+
+            isLivePlaying = true;
+            document.getElementById('live-btn-text').innerText = "演奏を停止";
+
+            // Setup Gain Nodes
+            partGainNodes = {};
+            gameState.requiredParts.forEach(part => {
+                const gain = audioCtx.createGain();
+                gain.gain.value = 0.5;
+                gain.connect(audioCtx.destination);
+                partGainNodes[part] = gain;
+            });
+
+            // Create Visualizer Bars
+            const viz = document.getElementById('live-visualizer');
+            viz.innerHTML = '';
+            for (let i = 0; i < 28; i++) {
+                const bar = document.createElement('div');
+                bar.className = "flex-1 bg-gradient-to-t from-purple-600 via-pink-500 to-amber-300 rounded-t transition-all duration-100";
+                bar.style.height = "10%";
+                bar.id = `viz-bar-${i}`;
+                viz.appendChild(bar);
+            }
+
+            // Rhythm loop
+            let beat = 0;
+            const chords = [
+                [261.63, 329.63, 392.00], // C
+                [220.00, 261.63, 329.63], // Am
+                [174.61, 220.00, 261.63], // F
+                [196.00, 246.94, 293.66]  // G
+            ];
+
+            livePerformanceTimer = setInterval(() => {
+                if (!isLivePlaying) return;
+
+                const chordIdx = Math.floor(beat / 4) % chords.length;
+                const currentChord = chords[chordIdx];
+
+                // Animate Visualizer
+                for (let i = 0; i < 28; i++) {
+                    const h = Math.floor(Math.random() * 85) + 15;
+                    const bar = document.getElementById(`viz-bar-${i}`);
+                    if (bar) bar.style.height = `${h}%`;
+                }
+
+                // Play synthesis notes per active part
+                gameState.requiredParts.forEach((part, pIdx) => {
+                    const gainNode = partGainNodes[part];
+                    if (!gainNode || gainNode.gain.value === 0) return;
+
+                    const now = audioCtx.currentTime;
+                    const osc = audioCtx.createOscillator();
+                    const noteGain = audioCtx.createGain();
+                    osc.connect(noteGain);
+                    noteGain.connect(gainNode);
+
+                    if (part === 'Lead') {
+                        osc.type = 'sine';
+                        const leadPitch = currentChord[beat % currentChord.length] * 2;
+                        osc.frequency.setValueAtTime(leadPitch, now);
+                        noteGain.gain.setValueAtTime(0.2, now);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    } else if (part.includes('Chorus')) {
+                        osc.type = 'triangle';
+                        const cPitch = currentChord[pIdx % currentChord.length];
+                        osc.frequency.setValueAtTime(cPitch, now);
+                        noteGain.gain.setValueAtTime(0.12, now);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    } else if (part === 'Bass') {
+                        osc.type = 'sawtooth';
+                        const bassPitch = currentChord[0] / 2;
+                        osc.frequency.setValueAtTime(bassPitch, now);
+                        noteGain.gain.setValueAtTime(0.25, now);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    } else if (part === 'Percussion') {
+                        // Noise / Snare Simulation
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(beat % 2 === 0 ? 120 : 280, now);
+                        noteGain.gain.setValueAtTime(0.15, now);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                    }
+
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                });
+
+                beat++;
+            }, 250);
+        }
+
+        function stopLivePerformance() {
+            isLivePlaying = false;
+            if (livePerformanceTimer) {
+                clearInterval(livePerformanceTimer);
+                livePerformanceTimer = null;
+            }
+            const btnText = document.getElementById('live-btn-text');
+            if (btnText) btnText.innerText = "ライブ演奏を再生";
+
+            const viz = document.getElementById('live-visualizer');
+            if (viz) {
+                viz.querySelectorAll('div').forEach(bar => bar.style.height = '10%');
+            }
+        }
+
+        function setPartVolume(part, val) {
+            if (partGainNodes[part]) {
+                partGainNodes[part].gain.value = parseFloat(val);
+            }
+        }
+
+        function renderLiveFaders() {
+            const container = document.getElementById('live-fader-controls');
+            if (!container) return;
+            container.innerHTML = '';
+
+            gameState.requiredParts.forEach(part => {
+                const member = gameState.myBandSelections[part];
+                const fader = document.createElement('div');
+                fader.className = "bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-center space-y-2";
+                fader.innerHTML = `
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${part}</div>
+                    <div class="text-xs font-black text-amber-300 truncate">${member ? member.name : '-'}</div>
+                    <input type="range" min="0" max="1" step="0.05" value="0.5" oninput="setPartVolume('${part}', this.value)" class="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                `;
+                container.appendChild(fader);
+            });
+        }
+
+        function shareBandResult() {
+            const playerRes = gameState.lastCalculatedPlayerBand;
+            if (!playerRes) return;
+
+            let text = `🎤 【アカペラバンド作成ゲーム】でバンドを結成しました！\n`;
+            text += `バンド名: My Band\n`;
+            text += `ジャンル: ${gameState.selectedGenre}\n`;
+            text += `総合演奏スコア: ${playerRes.totalScore}点！\n\n`;
+            text += `【編成メンバー】\n`;
+            Object.entries(gameState.myBandSelections).forEach(([part, m]) => {
+                text += `${part}: ${m ? m.name : 'なし'}\n`;
+            });
+            text += `\n#アカペラバンド作成ゲーム #AcappellaBandBuilder`;
+
+            // Clipboard copy with fallback
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            alert("バンドの結成結果とスコアをクリップボードにコピーしました！SNS等に貼り付けて共有してください！");
+        }
+
+        function toggleBGM() {
+            initAudioContext();
+            isBgmPlaying = !isBgmPlaying;
+            const btnText = document.getElementById('bgm-status-text');
+
+            if (isBgmPlaying) {
+                if (btnText) btnText.innerText = "BGM: ON";
+                playBGMForGenre(gameState.selectedGenre || 'J-POP');
+            } else {
+                if (btnText) btnText.innerText = "BGM: OFF";
+                stopBGM();
+            }
+        }
+
+        function stopBGM() {
+            if (bgmTimer) {
+                clearInterval(bgmTimer);
+                bgmTimer = null;
+            }
+        }
+
+        function playBGMForGenre(genre) {
+            stopBGM();
+            if (!isBgmPlaying) return;
+            initAudioContext();
+            if (!audioCtx) return;
+
+            // Single smooth BGM melody sequence for the entire game
+            const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; // C5 Pentatonic
+            let step = 0;
+
+            bgmTimer = setInterval(() => {
+                if (!isBgmPlaying) return;
+                const freq = scale[step % scale.length];
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.35);
+
+                step = (step + 1) % scale.length;
+            }, 350);
+        }
+
+        function playSFX(type) {
+            initAudioContext();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'pick') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'spin') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.exponentialRampToValueAtTime(440, now + 0.2);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'win') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'lose') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(150, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        const gameState = {
+            playMode: 'cpu', // 'cpu' or 'room'
+            cpuCount: 3,
+            roomCode: '',
+            memberCount: 6,
+            hasPercussion: true,
+            selectedGenre: '',
+            requiredParts: [],
+            currentDraftStepIndex: 0,
+            usedCandidateIds: new Set(),
+            myBandSelections: {},
+            cpuBandsSelections: [],
+            temporaryNominations: {}
+        };
+
+// ----------------------------------------------------
+// GENERATE 70 CANDIDATE DATABASE WITH WIDE STAT RANGES & DISTINCT PERSONALITIES
+// ----------------------------------------------------
+const PART_KEYS = ['lead', 'chorus1', 'chorus2', 'chorus3', 'chorus4', 'bass', 'perc'];
+
+const PART_NAME_MAP = {
+    'lead': 'Lead',
+    'chorus1': '1st Chorus',
+    'chorus2': '2nd Chorus',
+    'chorus3': '3rd Chorus',
+    'chorus4': '4th Chorus',
+    'bass': 'Bass',
+    'perc': 'Percussion'
+};
+
+const GENRES = ['洋楽', 'J-POP', 'バラード', 'Jazz/Gospel'];
+
+const MALE_NAMES_34 = [
+  "大輔", "健太郎", "拓海", "龍之介", "蓮", "翔太", "雄大", "和樹", "直樹", "亮介",
+  "彰人", "駿", "颯太", "雅也", "誠", "陸", "裕樹", "達也", "佑介", "剛"
+];
+const FEMALE_NAMES = [
+  "舞", "莉子", "さくら", "詩織", "綾乃", "結衣", "凛", "花音", "ひなた", "葵",
+  "美咲", "陽菜", "萌", "彩夏", "千尋", "楓", "奈々", "遥", "心春", "優奈"
+];
+const SURNAMES = [
+  "佐藤", "鈴木", "高橋", "田中", "渡辺", "伊藤", "山本", "中村", "小林", "加藤",
+  "吉田", "山田", "佐々木", "山口", "松本", "井上", "木村", "林", "清水", "山崎"
+];
+
+const TRAITS_POOL = [
+  { name: "絶対音感", desc: "ピッチがブレにくく高得点維持", pitchMod: 12, expMod: 0, stabMod: 10 },
+  { name: "爆発的表現力", desc: "表現力が非常に高いが安定感に欠ける", pitchMod: -5, expMod: 18, stabMod: -12 },
+  { name: "グルーヴマスター", desc: "リズムと安定感が極めて高い", pitchMod: 2, expMod: 5, stabMod: 16 },
+  { name: "ムードメーカー", desc: "全体の表現力とバランスを引き上げる", pitchMod: 0, expMod: 14, stabMod: 6 },
+  { name: "ハイトーンスペシャリスト", desc: "高音域で真価を発揮するがスタミナ注意", pitchMod: 10, expMod: 10, stabMod: -8 },
+  { name: "重低音ボイス", desc: "バンド全体のサウンドを強力に支える", pitchMod: 4, expMod: 6, stabMod: 12 },
+  { name: "ガラスの喉", desc: "表現力最高クラスだがピッチが乱れやすい", pitchMod: -10, expMod: 20, stabMod: -15 },
+  { name: "鉄壁のリズム", desc: "ピッチとリズムのブレがほぼゼロ", pitchMod: 14, expMod: -2, stabMod: 15 },
+  { name: "極上のヴィブラート", desc: "表現力と魅力を底上げする", pitchMod: 6, expMod: 16, stabMod: -2 },
+  { name: "シャイな天才", desc: "ポテンシャルは高いがステージで緊張しやすい", pitchMod: 15, expMod: 8, stabMod: -14 },
+  { name: "ベテランの安定感", desc: "大きな失敗がなく確実にスコアを残す", pitchMod: 8, expMod: 4, stabMod: 14 },
+  { name: "ワイルドボイス", desc: "個性的で強いインパクトを与えるが癖が強い", pitchMod: -8, expMod: 17, stabMod: -6 }
+];
+
+function generateCandidate(partKey, index) {
+  let name = "";
+  let voiceDesc = "";
+  let icon = "🎙️";
+
+  // Gender Rules: 1st Chorus -> Strictly Female, 4th Chorus & Bass -> Strictly Male
+  if (partKey === 'chorus1') {
+    const sName = SURNAMES[(index * 2) % SURNAMES.length];
+    const fName = FEMALE_NAMES[index % FEMALE_NAMES.length];
+    name = `${sName} ${fName}`;
+    const descs = [
+      "華やかで伸びのある超高音域", "ピッチの正確さが光るハイコーラス", "繊細なニュアンスで曲を彩るトップノート",
+      "クリアで澄み渡るソプラノボイス", "表現力豊かなハイパートの要", "透明感溢れるクリスタルボイス",
+      "アンサンブルに彩りを添える爽やかな声", "ハイトーンのピッチ精度抜群", "軽やかで伸びのあるファルセット", "明るく広がりのあるトップコーラス"
+    ];
+    voiceDesc = descs[index % descs.length];
+    icon = "✨";
+  } else if (partKey === 'chorus4' || partKey === 'bass') {
+    const sName = SURNAMES[(index * 3 + (partKey==='chorus4'?1:2)) % SURNAMES.length];
+    const mName = MALE_NAMES_34[(index + (partKey==='chorus4'?0:10)) % MALE_NAMES_34.length];
+    name = `${sName} ${mName}`;
+    
+    if (partKey === 'chorus4') {
+      const maleChorusDescs = [
+        "温かみのある中低音バーリトンボイス", "太く豊かなミドルレンジでコーラスの土台を固める",
+        "芯のあるチェストボイスでハモリの厚みを増す", "シックで落ち着いた低めの中音域が魅力",
+        "豊かな倍音を含む渋いミドルボイス", "男性的で力強いローミドルで和音を支える",
+        "包み込むようなベルベット・ボイス", "深みのある低めの声質でハーモニーに重厚感を与える",
+        "力強いハスキーミドルでグルーヴを生む", "安定感抜群のダークトーンボイス"
+      ];
+      voiceDesc = maleChorusDescs[index % maleChorusDescs.length];
+      icon = "👨‍🎤";
+    } else {
+      const maleBassDescs = [
+        "地鳴りのような超低音サブベース", "ズシリと響く超重量級ベース", "正確無比なピッチと圧倒的低音",
+        "グルーヴィーでファンキーなベースライン", "深みとコクのあるチェストベース", "バンドの土台を強固に固める低音の要",
+        "アタック感の強いキレのあるベース", "メロウで温かみのあるウッドベース調ボイス", "音圧と安定感を兼ね備えた重低音", "低音域のリズムキープ力が抜群"
+      ];
+      voiceDesc = maleBassDescs[index % maleBassDescs.length];
+      icon = "🔊";
+    }
+  } else if (partKey === 'lead') {
+    const names = ["相沢 奏", "神楽 葵", "橘 翔太", "白石 咲", "涼風 翼", "七瀬 遥", "星野 玲", "黒木 蓮", "早乙女 茜", "氷室 零"];
+    const descs = ["圧倒的声量とソウルフルな歌声", "透き通る透明感と繊細な表現力", "エネルギッシュで客席を魅了するハイトーン", "情熱的で情感豊かなドラマチックボイス", "伸びやかなハイトーンと表現力", "聴く者を魅了する唯一無二のシルキーボイス", "キャッチーで存在感あふれるボーカル", "エッジの効いたロック＆ポップスボイス", "優しく包み込むファルセットマスター", "クールで洗練された洋楽スタイルの歌唱"];
+    name = names[index];
+    voiceDesc = descs[index];
+    icon = "🌟";
+  } else if (partKey === 'chorus2') {
+    const names = ["木村 拓也", "高橋 凛", "松本 悠", "井上 結衣", "佐々木 陸", "山口 陽菜", "斎藤 健", "清水 萌", "山崎 航", "池田 美咲"];
+    const descs = ["ハモリのバランス感覚に優れた万能型", "柔軟な声質でリードとハイを繋ぐメゾボイス", "ピッチ精度が高く音をブレさせない", "明るくナチュラルなトーンの中高音", "和音の色彩感を豊かにするコーラス", "アンサンブルをまろやかにまとめる声", "どんなパートにも馴染むカメレオンボイス", "安定した音程とリズム感", "クリアな発音でハモリを支える", "ニュアンス豊かなミドルコーラス"];
+    name = names[index];
+    voiceDesc = descs[index];
+    icon = "🎵";
+  } else if (partKey === 'chorus3') {
+    const names = ["加藤 健太", "清水 大輝", "山崎 蓮", "阿部 翔", "森 拓也", "池田 駿", "橋本 悠真", "山下 颯太", "中川 陸", "長谷川 樹"];
+    const descs = ["温かみのある中低音ボイス", "深みのあるハーモニーの要", "リードを優しく引き立てる中低音", "安定したピッチでローミドルを支える", "豊かで包み込むようなボーカル", "リズムとピッチのバランスに優れたコーラス", "重厚なアコースティックサウンドを生む声", "全体の響きを落ち着かせる中音域", "キレのあるミドルコーラス", "ハーモニーを重厚にするチェストボイス"];
+    name = names[index];
+    voiceDesc = descs[index];
+    icon = "🎙️";
+  } else if (partKey === 'perc') {
+    const names = ["ビート 鬼塚", "リズム 巧", "パルス ジン", "スネア 拓海", "タップ 翔", "ショット 龍", "ブレイク ケン", "ジャム 慎太郎", "クラッシュ 豪", "テンポ 創"];
+    const descs = ["人声とは思えない多彩なドラムサウンド", "人間リズムマシンと称される正確性", "アグレッシブなリップスネアと重厚バスドラ", "繊細なハンドパーカッション風ビート", "圧倒的音圧と手数で魅了するプレイスタイル", "グルーヴ感とタイム感が極めて高い", "テクニカルでトリッキーなビートメイク", "安定したテンポキープでバンドを牽引", "多彩な音色を自在に操るビートボクサー", "ノリの良さとキレ味抜群のパーカッション"];
+    name = names[index];
+    voiceDesc = descs[index];
+    icon = "🥁";
+  }
+
+  // --- STAT GENERATION: MORE WIDE AND DISTINCT PERSONALITIES (20 - 98 Range) ---
+  const archetypes = [
+    { name: "音程特化", pitch: [88, 98], rhythm: [35, 60], express: [25, 55] },
+    { name: "表現モンスター", pitch: [25, 55], rhythm: [30, 60], express: [88, 98] },
+    { name: "リズム鉄壁", pitch: [35, 60], rhythm: [88, 98], express: [25, 50] },
+    { name: "尖り型天才", pitch: [85, 96], rhythm: [20, 45], express: [80, 95] },
+    { name: "不器用熱血", pitch: [25, 45], rhythm: [82, 94], express: [80, 92] },
+    { name: "バランス型", pitch: [55, 72], rhythm: [55, 72], express: [55, 72] },
+    { name: "大器晩成", pitch: [40, 58], rhythm: [40, 58], express: [40, 58] },
+    { name: "感覚派ボーカル", pitch: [30, 55], rhythm: [85, 95], express: [85, 96] },
+    { name: "安定職人", pitch: [75, 88], rhythm: [78, 90], express: [30, 50] },
+    { name: "ダイナミック", pitch: [80, 92], rhythm: [30, 55], express: [75, 90] }
+  ];
+
+  const arch = archetypes[index % archetypes.length];
+
+  const getStat = (range) => Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+
+  let pitch = getStat(arch.pitch);
+  let rhythm = getStat(arch.rhythm);
+  let expressiveness = getStat(arch.express);
+
+  // Apply minor part bias
+  if (partKey === 'lead') expressiveness = Math.min(98, expressiveness + 5);
+  if (partKey === 'perc' || partKey === 'bass') rhythm = Math.min(98, rhythm + 5);
+  if (partKey === 'chorus1' || partKey === 'chorus2') pitch = Math.min(98, pitch + 5);
+
+  const traitObj = TRAITS_POOL[(index + partKey.length) % TRAITS_POOL.length];
+  const mainPart = PART_NAME_MAP[partKey];
+  
+  const isFemale = (partKey === 'chorus1');
+  const isMale = (partKey === 'chorus4' || partKey === 'bass');
+
+  const possibleSubParts = Object.values(PART_NAME_MAP).filter(p => {
+    if (p === mainPart) return false;
+    if (isFemale && (p === '4th Chorus' || p === 'Bass')) return false;
+    if (isMale && p === '1st Chorus') return false;
+    return true;
+  });
+
+  const subPart = possibleSubParts[(index + partKey.length) % possibleSubParts.length];
+
+  return {
+    id: `${partKey}_${index}`,
+    partKey: partKey,
+    mainPart: mainPart,
+    subPart: subPart,
+    archetypeTag: arch.name,
+    preferredGenre: GENRES[(index + partKey.length * 2) % GENRES.length],
+    name: name,
+    voiceDesc: voiceDesc,
+    icon: icon,
+    pitch: pitch,
+    rhythm: rhythm,
+    expressiveness: expressiveness,
+    specialSkill: {
+      name: traitObj.name,
+      effect: traitObj.desc
+    },
+    traitMods: { pitch: traitObj.pitchMod, exp: traitObj.expMod, stab: traitObj.stabMod }
+  };
+}
+
+// Generate all 70 candidates
+const CANDIDATES = [];
+PART_KEYS.forEach(pKey => {
+    for (let i = 0; i < 10; i++) {
+        CANDIDATES.push(generateCandidate(pKey, i));
+    }
+});
+
+// Setup Mode UI Handler
+function setPlayMode(mode) {
+    gameState.playMode = mode;
+    const btnCpu = document.getElementById('btn-mode-cpu');
+    const btnRoom = document.getElementById('btn-mode-room');
+    const cpuContainer = document.getElementById('cpu-count-container');
+    const roomContainer = document.getElementById('room-code-container');
+    const modeBadge = document.getElementById('current-mode-badge');
+
+    if (mode === 'cpu') {
+        btnCpu.className = "p-4 rounded-xl border-2 border-purple-500 bg-purple-950/40 text-left transition relative";
+        btnRoom.className = "p-4 rounded-xl border-2 border-slate-700 bg-slate-900/40 text-left transition relative";
+        cpuContainer.classList.remove('hidden');
+        roomContainer.classList.add('hidden');
+        modeBadge.innerText = "SOLO VS CPU";
+    } else {
+        btnRoom.className = "p-4 rounded-xl border-2 border-purple-500 bg-purple-950/40 text-left transition relative";
+        btnCpu.className = "p-4 rounded-xl border-2 border-slate-700 bg-slate-900/40 text-left transition relative";
+        cpuContainer.classList.add('hidden');
+        roomContainer.classList.remove('hidden');
+        modeBadge.innerText = "ROOM MATCH";
+    }
+}
+
+        function generateRandomRoomCode() {
+            const code = 'ACAP-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('room-code-input').value = code;
+            gameState.roomCode = code;
+            document.getElementById('room-code-display').innerText = "ROOM: " + code;
+        }
+
+        function setMemberCount(count) {
+            gameState.memberCount = count;
+            document.querySelectorAll('.btn-count').forEach(btn => {
+                btn.className = "btn-count p-4 rounded-xl border-2 border-slate-700 bg-slate-900/50 text-center transition";
+            });
+            const selectedBtn = document.getElementById(`btn-count-${count}`);
+            selectedBtn.className = "btn-count p-4 rounded-xl border-2 border-purple-500 bg-purple-950/40 text-center transition";
+
+            // If 7 members, Percussion is strictly forced ON
+            const togglePerc = document.getElementById('toggle-perc');
+            if (count === 7) {
+                togglePerc.checked = true;
+                togglePerc.disabled = true;
+                gameState.hasPercussion = true;
+            } else {
+                togglePerc.disabled = false;
+            }
+        }
+
+        function togglePercussion(val) {
+            gameState.hasPercussion = val;
+        }
+
+        function goToStep2() {
+            gameState.cpuCount = parseInt(document.getElementById('cpu-count-range').value);
+            if (gameState.playMode === 'room') {
+                gameState.roomCode = document.getElementById('room-code-input').value || 'ACAP-0000';
+                document.getElementById('room-code-display').innerText = "ROOM: " + gameState.roomCode;
+            }
+
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.remove('hidden');
+        }
+
+        function goToStep1() {
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+        }
+
+        function selectGenre(genre) {
+            gameState.selectedGenre = genre;
+            document.querySelectorAll('.genre-card').forEach(card => {
+                card.classList.remove('border-purple-500', 'bg-purple-950/30');
+            });
+            event.currentTarget.classList.add('border-purple-500', 'bg-purple-950/30');
+
+            const btnToStep3 = document.getElementById('btn-to-step-3');
+            btnToStep3.disabled = false;
+            btnToStep3.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            playBGMForGenre(genre);
+        }
+
+        function goToStep3() {
+            // 指名順序: Lead -> Chorus (1st..4th) -> Bass -> Percussion
+            let parts = ['Lead', '1st Chorus', '2nd Chorus'];
+
+            if (gameState.memberCount >= 6) parts.push('3rd Chorus');
+            if (gameState.memberCount === 7) parts.push('4th Chorus');
+
+            parts.push('Bass');
+            if (gameState.hasPercussion) parts.push('Percussion');
+
+            gameState.requiredParts = parts;
+            gameState.currentDraftStepIndex = 0;
+            gameState.usedCandidateIds.clear();
+            gameState.myBandSelections = {};
+
+            // ジャンルのバッジ表示更新
+            const genreBadge = document.getElementById('selected-genre-badge');
+            if (genreBadge) {
+                genreBadge.innerText = `ジャンル: ${gameState.selectedGenre}`;
+            }
+
+            // Initialize CPU Bands Selections
+            gameState.cpuBandsSelections = [];
+            for (let i = 0; i < gameState.cpuCount; i++) {
+                gameState.cpuBandsSelections.push({
+                    name: `CPU Rival ${i + 1}`,
+                    members: {}
+                });
+            }
+
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-3').classList.remove('hidden');
+
+            setupPartProgressDots();
+            startPartDraft();
+        }
+
+        // ==========================================
+        // DRAFT FLOW & ENGINE LOGIC
+        // ==========================================
+        function setupPartProgressDots() {
+            const container = document.getElementById('part-progress-dots');
+            container.innerHTML = '';
+            gameState.requiredParts.forEach((part, idx) => {
+                const dot = document.createElement('div');
+                dot.id = `part-dot-${idx}`;
+                dot.title = part;
+                dot.className = `w-3 h-3 rounded-full transition-all border ${
+                    idx === 0 ? 'bg-purple-500 border-purple-300 scale-125' : 'bg-slate-700 border-slate-600'
+                }`;
+                container.appendChild(dot);
+            });
+        }
+
+        function startPartDraft() {
+            const currentPart = gameState.requiredParts[gameState.currentDraftStepIndex];
+            document.getElementById('draft-current-part-title').innerText = `パート指名: ${currentPart}`;
+
+            // Update dot highlights
+            gameState.requiredParts.forEach((_, idx) => {
+                const dot = document.getElementById(`part-dot-${idx}`);
+                if (!dot) return;
+                if (idx < gameState.currentDraftStepIndex) {
+                    dot.className = "w-3 h-3 rounded-full bg-emerald-500 border-emerald-300";
+                } else if (idx === gameState.currentDraftStepIndex) {
+                    dot.className = "w-3 h-3 rounded-full bg-purple-500 border-purple-300 scale-125";
+                } else {
+                    dot.className = "w-3 h-3 rounded-full bg-slate-700 border-slate-600";
+                }
+            });
+
+            // Reset temp selections
+            gameState.selectedCandidate = null;
+            document.getElementById('selected-candidate-name-badge').innerText = "未選択";
+            const confirmBtn = document.getElementById('btn-confirm-nomination');
+            confirmBtn.disabled = true;
+            confirmBtn.className = "w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 opacity-50 cursor-not-allowed text-white font-black text-sm rounded-xl shadow-lg transition";
+
+            renderMyBandRoster();
+            filterCandidates();
+        }
+
+        function filterCandidates() {
+            const searchVal = document.getElementById('candidate-search').value.toLowerCase().trim();
+            const partVal = document.getElementById('filter-part').value;
+            const subpartVal = document.getElementById('filter-subpart').value;
+            const genreVal = document.getElementById('filter-genre').value;
+            const currentPart = gameState.requiredParts[gameState.currentDraftStepIndex];
+
+            const filtered = CANDIDATES.filter(c => {
+                if (gameState.usedCandidateIds.has(c.id)) return false;
+
+                if (searchVal && !c.name.toLowerCase().includes(searchVal) && !c.specialSkill.name.toLowerCase().includes(searchVal)) {
+                    return false;
+                }
+                if (partVal !== 'ALL' && c.mainPart !== partVal) return false;
+                if (subpartVal !== 'ALL' && c.subPart !== subpartVal) return false;
+                if (genreVal !== 'ALL' && c.preferredGenre !== genreVal) return false;
+
+                return true;
+            });
+
+            // Sort: prioritize current part matches
+            filtered.sort((a, b) => {
+                const aMatch = a.mainPart === currentPart ? 2 : (a.subPart === currentPart ? 1 : 0);
+                const bMatch = b.mainPart === currentPart ? 2 : (b.subPart === currentPart ? 1 : 0);
+                if (aMatch !== bMatch) return bMatch - aMatch;
+                return (b.pitch + b.rhythm + b.expressiveness) - (a.pitch + a.rhythm + a.expressiveness);
+            });
+
+            renderCandidatesList(filtered);
+        }
+
+        function resetCandidateFilters() {
+            document.getElementById('candidate-search').value = '';
+            document.getElementById('filter-part').value = 'ALL';
+            document.getElementById('filter-subpart').value = 'ALL';
+            document.getElementById('filter-genre').value = 'ALL';
+            filterCandidates();
+        }
+
+        function renderCandidatesList(list) {
+            const container = document.getElementById('candidates-grid');
+            document.getElementById('candidate-count-display').innerText = list.length;
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500 text-xs">条件に該当する未指名メンバーがいません</div>`;
+                return;
+            }
+
+            const currentPart = gameState.requiredParts[gameState.currentDraftStepIndex];
+
+            list.forEach(c => {
+                const isSelected = gameState.selectedCandidate && gameState.selectedCandidate.id === c.id;
+                const isGenreMatched = c.preferredGenre === gameState.selectedGenre;
+                const isMainPartMatched = c.mainPart === currentPart;
+
+                const card = document.createElement('div');
+                card.className = `glass-card p-3.5 rounded-2xl cursor-pointer relative flex flex-col justify-between ${
+                    isSelected ? 'selected' : ''
+                }`;
+                card.onclick = () => selectCandidateCard(c);
+
+                card.innerHTML = `
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">${c.icon}</span>
+                                <div>
+                                    <h4 class="font-bold text-sm text-white flex items-center gap-1.5">
+                                        ${c.name}
+                                        ${isGenreMatched ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.2 rounded">得意一致</span>' : ''}
+                                    </h4>
+                                    <div class="flex gap-1 text-[10px] mt-0.5 flex-wrap">
+                                        <span class="px-1.5 py-0.2 rounded font-semibold ${isMainPartMatched ? 'bg-purple-900/80 text-purple-200 border border-purple-500' : 'bg-slate-800 text-slate-300'}">
+                                            適性: ${c.mainPart}
+                                        </span>
+                                        <span class="px-1.5 py-0.2 rounded bg-slate-800/80 text-slate-400">
+                                            サブ: ${c.subPart}
+                                        </span>
+                                        <span class="px-1.5 py-0.2 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/50">
+                                            ${c.archetypeTag}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="text-[11px] text-slate-400 line-clamp-1">${c.voiceDesc}</p>
+
+                        <!-- Stat Bars -->
+                        <div class="space-y-1 pt-1 border-t border-slate-800/80 text-[10px]">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">音程安定:</span>
+                                <div class="w-24 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="${c.pitch >= 80 ? 'bg-indigo-400 font-bold' : (c.pitch <= 40 ? 'bg-rose-500' : 'bg-indigo-300')} h-full" style="width: ${c.pitch}%"></div>
+                                </div>
+                                <span class="font-mono ${c.pitch >= 80 ? 'text-indigo-300 font-bold' : (c.pitch <= 40 ? 'text-rose-400' : 'text-slate-300')} w-5 text-right">${c.pitch}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">リズム感:</span>
+                                <div class="w-24 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="${c.rhythm >= 80 ? 'bg-cyan-400 font-bold' : (c.rhythm <= 40 ? 'bg-rose-500' : 'bg-cyan-300')} h-full" style="width: ${c.rhythm}%"></div>
+                                </div>
+                                <span class="font-mono ${c.rhythm >= 80 ? 'text-cyan-300 font-bold' : (c.rhythm <= 40 ? 'text-rose-400' : 'text-slate-300')} w-5 text-right">${c.rhythm}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">表現力:</span>
+                                <div class="w-24 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="${c.expressiveness >= 80 ? 'bg-pink-400 font-bold' : (c.expressiveness <= 40 ? 'bg-rose-500' : 'bg-pink-300')} h-full" style="width: ${c.expressiveness}%"></div>
+                                </div>
+                                <span class="font-mono ${c.expressiveness >= 80 ? 'text-pink-300 font-bold' : (c.expressiveness <= 40 ? 'text-rose-400' : 'text-slate-300')} w-5 text-right">${c.expressiveness}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+                        <span class="text-amber-300/90 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/30">
+                            ★ ${c.specialSkill.name}
+                        </span>
+                        <span class="text-slate-400">${c.preferredGenre}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectCandidateCard(c) {
+            playSFX('pick');
+            gameState.selectedCandidate = c;
+            document.getElementById('selected-candidate-name-badge').innerText = c.name;
+
+            const confirmBtn = document.getElementById('btn-confirm-nomination');
+            confirmBtn.disabled = false;
+            confirmBtn.className = "w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 text-white font-black text-sm rounded-xl shadow-lg hover:opacity-95 transition cursor-pointer";
+
+            filterCandidates();
+        }
+
+        function renderMyBandRoster() {
+            const container = document.getElementById('my-band-roster');
+            container.innerHTML = '';
+
+            gameState.requiredParts.forEach((part, idx) => {
+                const assigned = gameState.myBandSelections[part];
+                const isCurrent = idx === gameState.currentDraftStepIndex;
+
+                const item = document.createElement('div');
+                item.className = `p-2.5 rounded-xl border flex items-center justify-between text-xs ${
+                    assigned 
+                    ? 'bg-purple-950/30 border-purple-800/60 text-purple-200' 
+                    : (isCurrent ? 'bg-amber-950/20 border-amber-500/60 text-amber-300 animate-pulse' : 'bg-slate-900/40 border-slate-800 text-slate-500')
+                }`;
+
+                item.innerHTML = `
+                    <div class="font-bold w-24">${part}</div>
+                    <div class="flex-1 text-right font-semibold truncate">
+                        ${assigned ? `${assigned.icon} ${assigned.name}` : (isCurrent ? '指名検討中...' : '未決定')}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function confirmPartNomination() {
+            if (!gameState.selectedCandidate) return;
+
+            const currentPart = gameState.requiredParts[gameState.currentDraftStepIndex];
+            
+            // Generate nominations for CPUs
+            gameState.temporaryNominations = {};
+            gameState.temporaryNominations['Player'] = gameState.selectedCandidate;
+
+            // CPU AI pick algorithm
+            gameState.cpuBandsSelections.forEach((cpu, idx) => {
+                const available = CANDIDATES.filter(c => !gameState.usedCandidateIds.has(c.id));
+                // CPU prefers mainPart matches or preferred genre matches
+                available.sort((a, b) => {
+                    let aScore = (a.mainPart === currentPart ? 50 : 0) + (a.preferredGenre === gameState.selectedGenre ? 20 : 0) + a.pitch;
+                    let bScore = (b.mainPart === currentPart ? 50 : 0) + (b.preferredGenre === gameState.selectedGenre ? 20 : 0) + b.pitch;
+                    return bScore - aScore;
+                });
+                gameState.temporaryNominations[`CPU_${idx}`] = available[0];
+            });
+
+            // Check if player pick conflicts with any CPU pick
+            const playerCandidate = gameState.selectedCandidate;
+            const competingTeams = [];
+
+            Object.entries(gameState.temporaryNominations).forEach(([teamKey, candidate]) => {
+                if (candidate && candidate.id === playerCandidate.id) {
+                    competingTeams.push(teamKey);
+                }
+            });
+
+            if (competingTeams.length > 1) {
+                // Trigger Conflict Lottery Modal
+                openLotteryModal(playerCandidate, competingTeams);
+            } else {
+                // Direct Win without conflict
+                awardCandidateToTeam('Player', playerCandidate, currentPart);
+                resolveRemainingCpuNominations(currentPart);
+                advanceDraftRound();
+            }
+        }
+
+        function awardCandidateToTeam(teamKey, candidate, part) {
+            gameState.usedCandidateIds.add(candidate.id);
+            if (teamKey === 'Player') {
+                gameState.myBandSelections[part] = candidate;
+            } else {
+                const cpuIdx = parseInt(teamKey.replace('CPU_', ''));
+                gameState.cpuBandsSelections[cpuIdx].members[part] = candidate;
+            }
+        }
+
+        function resolveRemainingCpuNominations(currentPart) {
+            gameState.cpuBandsSelections.forEach((cpu, idx) => {
+                const teamKey = `CPU_${idx}`;
+                if (!cpu.members[currentPart]) {
+                    const candidate = gameState.temporaryNominations[teamKey];
+                    if (candidate && !gameState.usedCandidateIds.has(candidate.id)) {
+                        awardCandidateToTeam(teamKey, candidate, currentPart);
+                    } else {
+                        // Candidate was taken in lottery, pick next best available
+                        const available = CANDIDATES.filter(c => !gameState.usedCandidateIds.has(c.id));
+                        available.sort((a, b) => (b.mainPart === currentPart ? 50 : 0) + b.pitch - ((a.mainPart === currentPart ? 50 : 0) + a.pitch));
+                        if (available[0]) {
+                            awardCandidateToTeam(teamKey, available[0], currentPart);
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // LOTTERY & RESELECTION MODALS
+        // ==========================================
+        let currentLotteryData = null;
+        let selectedReselectCandidate = null;
+
+        function openLotteryModal(candidate, competingTeams) {
+            currentLotteryData = { candidate, competingTeams };
+            document.getElementById('lottery-candidate-title').innerText = `${candidate.name} の指名権くじ引き`;
+            
+            const box = document.getElementById('lottery-box');
+            const boxIcon = document.getElementById('lottery-box-icon');
+            const boxText = document.getElementById('lottery-box-text');
+            const resultBadge = document.getElementById('lottery-result-badge');
+
+            box.className = "w-40 h-40 rounded-2xl border-4 border-amber-400/80 bg-gradient-to-tr from-amber-950 via-amber-900 to-amber-950 flex flex-col items-center justify-center text-amber-200 font-black shadow-2xl transition-all duration-500 relative cursor-pointer group";
+            boxIcon.innerText = "📦";
+            boxIcon.className = "text-5xl mb-2 transition-transform duration-300 group-hover:scale-110";
+            boxText.innerText = "くじ引き箱";
+            boxText.classList.remove('hidden');
+            resultBadge.classList.add('hidden');
+
+            const listContainer = document.getElementById('competing-bands-list');
+            listContainer.innerHTML = '';
+            
+            competingTeams.forEach((team, idx) => {
+                const isPlayer = team === 'Player';
+                const label = isPlayer ? 'My Band (あなた)' : team.replace('CPU_', 'CPU Rival ');
+
+                if (idx > 0) {
+                    const vsSpan = document.createElement('span');
+                    vsSpan.className = 'font-black text-xs text-rose-400 italic';
+                    vsSpan.innerText = 'VS';
+                    listContainer.appendChild(vsSpan);
+                }
+
+                const card = document.createElement('div');
+                card.className = `px-3.5 py-2 rounded-xl border flex items-center gap-2 shadow-md ${
+                    isPlayer 
+                    ? 'bg-gradient-to-r from-purple-900/90 to-indigo-900/90 border-purple-400 text-purple-100 font-bold' 
+                    : 'bg-slate-800/90 border-slate-600 text-slate-200'
+                }`;
+                card.innerHTML = `
+                    <span class="w-2 h-2 rounded-full ${isPlayer ? 'bg-purple-400 animate-ping' : 'bg-slate-400'}"></span>
+                    <span class="text-xs">${label}</span>
+                `;
+                listContainer.appendChild(card);
+            });
+
+            document.getElementById('btn-start-lottery').disabled = false;
+            document.getElementById('lottery-modal').classList.remove('hidden');
+        }
+
+        function executeLotteryDraw() {
+            if (!currentLotteryData) return;
+            document.getElementById('btn-start-lottery').disabled = true;
+            playSFX('spin');
+
+            const box = document.getElementById('lottery-box');
+            const boxIcon = document.getElementById('lottery-box-icon');
+            const boxText = document.getElementById('lottery-box-text');
+            const resultBadge = document.getElementById('lottery-result-badge');
+
+            // Box shake animation
+            box.classList.add('animate-bounce');
+            boxText.innerText = "シャッフル中...";
+
+            setTimeout(() => {
+                box.classList.remove('animate-bounce');
+                const winnerIndex = Math.floor(Math.random() * currentLotteryData.competingTeams.length);
+                const winnerTeam = currentLotteryData.competingTeams[winnerIndex];
+                const currentPart = gameState.requiredParts[gameState.currentDraftStepIndex];
+
+                awardCandidateToTeam(winnerTeam, currentLotteryData.candidate, currentPart);
+
+                boxText.classList.add('hidden');
+                resultBadge.classList.remove('hidden');
+
+                if (winnerTeam === 'Player') {
+                    boxIcon.innerText = "🎟️✨";
+                    resultBadge.innerText = "当たり！🎉";
+                    resultBadge.className = "text-xl font-black mt-1 text-emerald-400";
+                    box.className = "w-40 h-40 rounded-2xl border-4 border-emerald-400 bg-gradient-to-tr from-emerald-950 via-emerald-900 to-slate-900 flex flex-col items-center justify-center text-emerald-200 font-black shadow-2xl transition-all duration-500 relative";
+                } else {
+                    boxIcon.innerText = "📄💦";
+                    resultBadge.innerText = "ハズレ... 😭";
+                    resultBadge.className = "text-xl font-black mt-1 text-rose-400";
+                    box.className = "w-40 h-40 rounded-2xl border-4 border-rose-500 bg-gradient-to-tr from-rose-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center text-rose-200 font-black shadow-2xl transition-all duration-500 relative";
+                }
+
+                setTimeout(() => {
+                    document.getElementById('lottery-modal').classList.add('hidden');
+
+                    if (winnerTeam === 'Player') {
+                        playSFX('win');
+                        resolveRemainingCpuNominations(currentPart);
+                        advanceDraftRound();
+                    } else {
+                        playSFX('lose');
+                        openReselectionModal(currentPart);
+                    }
+                }, 1400);
+            }, 1200);
+        }
+
+        // Reselection modal using the full normal UI display format
+        function openReselectionModal(currentPart) {
+            document.getElementById('reselect-part-title').innerText = currentPart;
+            selectedReselectCandidate = null;
+            document.getElementById('reselect-selected-name-badge').innerText = "未選択";
+
+            const confirmBtn = document.getElementById('btn-confirm-reselection');
+            confirmBtn.disabled = true;
+            confirmBtn.className = "w-full py-3 bg-gradient-to-r from-rose-600 via-purple-600 to-rose-600 opacity-50 cursor-not-allowed text-white font-black text-sm rounded-xl shadow-lg transition";
+
+            resetReselectCandidateFilters();
+            document.getElementById('reselect-modal').classList.remove('hidden');
+        }
+
+        function filterReselectCandidates() {
+            const searchVal = document.getElementById('reselect-candidate-search').value.toLowerCase().trim();
+            const partVal = document.getElementById('reselect-filter-part').value;
+            const subpartVal = document.getElementById('reselect-filter-subpart').value;
+            const genreVal = document.getElementById('reselect-filter-genre').value;
+            const currentPart = gameState.requiredParts[gameState.currentDraftStepIndex];
+
+            const available = CANDIDATES.filter(c => {
+                if (gameState.usedCandidateIds.has(c.id)) return false;
+
+                if (searchVal && !c.name.toLowerCase().includes(searchVal) && !c.specialSkill.name.toLowerCase().includes(searchVal)) {
+                    return false;
+                }
+                if (partVal !== 'ALL' && c.mainPart !== partVal) return false;
+                if (subpartVal !== 'ALL' && c.subPart !== subpartVal) return false;
+                if (genreVal !== 'ALL' && c.preferredGenre !== genreVal) return false;
+
+                return true;
+            });
+
+            available.sort((a, b) => {
+                const aMatch = a.mainPart === currentPart ? 2 : (a.subPart === currentPart ? 1 : 0);
+                const bMatch = b.mainPart === currentPart ? 2 : (b.subPart === currentPart ? 1 : 0);
+                if (aMatch !== bMatch) return bMatch - aMatch;
+                return (b.pitch + b.rhythm + b.expressiveness) - (a.pitch + a.rhythm + a.expressiveness);
+            });
+
+            renderReselectCandidatesGrid(available);
+        }
+
+        function resetReselectCandidateFilters() {
+            document.getElementById('reselect-candidate-search').value = '';
+            document.getElementById('reselect-filter-part').value = 'ALL';
+            document.getElementById('reselect-filter-subpart').value = 'ALL';
+            document.getElementById('reselect-filter-genre').value = 'ALL';
+            filterReselectCandidates();
+        }
+
+        function renderReselectCandidatesGrid(list) {
+            const container = document.getElementById('reselect-candidates-grid');
+            document.getElementById('reselect-candidate-count-display').innerText = list.length;
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500 text-xs">条件に該当する残りの候補メンバーがいません</div>`;
+                return;
+            }
+
+            const currentPart = gameState.requiredParts[gameState.currentDraftStepIndex];
+
+            list.forEach(c => {
+                const isSelected = selectedReselectCandidate && selectedReselectCandidate.id === c.id;
+                const isGenreMatched = c.preferredGenre === gameState.selectedGenre;
+                const isMainPartMatched = c.mainPart === currentPart;
+
+                const card = document.createElement('div');
+                card.className = `glass-card p-3 rounded-2xl cursor-pointer relative flex flex-col justify-between ${
+                    isSelected ? 'selected' : ''
+                }`;
+                card.onclick = () => selectReselectCandidateCard(c);
+
+                card.innerHTML = `
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">${c.icon}</span>
+                                <div>
+                                    <h4 class="font-bold text-sm text-white flex items-center gap-1.5">
+                                        ${c.name}
+                                        ${isGenreMatched ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.2 rounded">得意一致</span>' : ''}
+                                    </h4>
+                                    <div class="flex gap-1 text-[10px] mt-0.5 flex-wrap">
+                                        <span class="px-1.5 py-0.2 rounded font-semibold ${isMainPartMatched ? 'bg-purple-900/80 text-purple-200 border border-purple-500' : 'bg-slate-800 text-slate-300'}">
+                                            適性: ${c.mainPart}
+                                        </span>
+                                        <span class="px-1.5 py-0.2 rounded bg-slate-800/80 text-slate-400">
+                                            サブ: ${c.subPart}
+                                        </span>
+                                        <span class="px-1.5 py-0.2 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/50">
+                                            ${c.archetypeTag}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="text-[11px] text-slate-400 line-clamp-1">${c.voiceDesc}</p>
+
+                        <!-- Stat Bars -->
+                        <div class="space-y-1 pt-1 border-t border-slate-800/80 text-[10px]">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">音程安定:</span>
+                                <div class="w-20 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="${c.pitch >= 80 ? 'bg-indigo-400 font-bold' : (c.pitch <= 40 ? 'bg-rose-500' : 'bg-indigo-300')} h-full" style="width: ${c.pitch}%"></div>
+                                </div>
+                                <span class="font-mono ${c.pitch >= 80 ? 'text-indigo-300 font-bold' : (c.pitch <= 40 ? 'text-rose-400' : 'text-slate-300')} w-5 text-right">${c.pitch}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">リズム感:</span>
+                                <div class="w-20 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="${c.rhythm >= 80 ? 'bg-cyan-400 font-bold' : (c.rhythm <= 40 ? 'bg-rose-500' : 'bg-cyan-300')} h-full" style="width: ${c.rhythm}%"></div>
+                                </div>
+                                <span class="font-mono ${c.rhythm >= 80 ? 'text-cyan-300 font-bold' : (c.rhythm <= 40 ? 'text-rose-400' : 'text-slate-300')} w-5 text-right">${c.rhythm}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">表現力:</span>
+                                <div class="w-20 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="${c.expressiveness >= 80 ? 'bg-pink-400 font-bold' : (c.expressiveness <= 40 ? 'bg-rose-500' : 'bg-pink-300')} h-full" style="width: ${c.expressiveness}%"></div>
+                                </div>
+                                <span class="font-mono ${c.expressiveness >= 80 ? 'text-pink-300 font-bold' : (c.expressiveness <= 40 ? 'text-rose-400' : 'text-slate-300')} w-5 text-right">${c.expressiveness}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+                        <span class="text-amber-300/90 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/30">
+                            ★ ${c.specialSkill.name}
+                        </span>
+                        <span class="text-slate-400">${c.preferredGenre}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectReselectCandidateCard(c) {
+            playSFX('pick');
+            selectedReselectCandidate = c;
+            document.getElementById('reselect-selected-name-badge').innerText = c.name;
+
+            const confirmBtn = document.getElementById('btn-confirm-reselection');
+            confirmBtn.disabled = false;
+            confirmBtn.className = "w-full py-3 bg-gradient-to-r from-rose-600 via-purple-600 to-rose-600 text-white font-black text-sm rounded-xl shadow-lg hover:opacity-95 transition cursor-pointer";
+
+            filterReselectCandidates();
+        }
+
+        function confirmReselectionChoice() {
+            if (!selectedReselectCandidate) return;
+            const currentPart = gameState.requiredParts[gameState.currentDraftStepIndex];
+
+            awardCandidateToTeam('Player', selectedReselectCandidate, currentPart);
+            document.getElementById('reselect-modal').classList.add('hidden');
+            resolveRemainingCpuNominations(currentPart);
+            advanceDraftRound();
+        }
+
+        function advanceDraftRound() {
+            gameState.currentDraftStepIndex++;
+            if (gameState.currentDraftStepIndex < gameState.requiredParts.length) {
+                startPartDraft();
+            } else {
+                finishDraftAndCalculateResults();
+            }
+        }
+
+        // ==========================================
+        // STEP 4: EVALUATION & RESULTS
+        // ==========================================
+        function finishDraftAndCalculateResults() {
+            document.getElementById('step-3').classList.add('hidden');
+            document.getElementById('step-4').classList.remove('hidden');
+
+            const allBands = [];
+
+            // Calculate Player Score
+            const myScore = calculateBandPerformance(gameState.myBandSelections, "My Band (あなた)");
+            gameState.lastCalculatedPlayerBand = myScore;
+            allBands.push(myScore);
+
+            // Calculate CPU Scores
+            gameState.cpuBandsSelections.forEach((cpu, idx) => {
+                const cpuScore = calculateBandPerformance(cpu.members, cpu.name);
+                allBands.push(cpuScore);
+            });
+
+            // Sort rankings
+            allBands.sort((a, b) => b.totalScore - a.totalScore);
+
+            renderLiveFaders();
+            renderFinalRankings(allBands);
+        }
+
+        function calculateBandPerformance(membersMap, bandName) {
+            let pitchTotal = 0;
+            let rhythmTotal = 0;
+            let expressTotal = 0;
+            let partMatchingBonus = 0;
+            let comboBonus = 0;
+            const comments = [];
+
+            const membersList = Object.values(membersMap).filter(Boolean);
+
+            // 1. 各メンバーの基本能力・特技補正・得意ジャンル
+            membersList.forEach(m => {
+                pitchTotal += m.pitch + (m.traitMods ? m.traitMods.pitch : 0);
+                rhythmTotal += m.rhythm + (m.traitMods ? m.traitMods.stab : 0);
+                expressTotal += m.expressiveness + (m.traitMods ? m.traitMods.exp : 0);
+
+                // 得意ジャンル一致ボーナス (+1点)
+                if (m.preferredGenre === gameState.selectedGenre) {
+                    partMatchingBonus += 1;
+                    comments.push(`💡 ${m.name}が得意ジャンル「${m.preferredGenre}」でパフォーマンス向上！ (+1pt)`);
+                }
+            });
+
+            // 2. パート適性判定 (+2pt / 0pt / -2pt)
+            Object.entries(membersMap).forEach(([part, m]) => {
+                if (!m) return;
+                if (m.mainPart === part) {
+                    // 1. 本適性: +2点
+                    partMatchingBonus += 2;
+                    comments.push(`🎯 ${m.name}が本適性パート[${part}]に配置！ (+2pt)`);
+                } else if (m.subPart === part) {
+                    // 2. サブ適性: なにもしない (0点)
+                    comments.push(`🔄 ${m.name}がサブ適性パート[${part}]を担当 (±0pt)`);
+                } else {
+                    // 1. パート不適性: -2点
+                    partMatchingBonus -= 2;
+                    comments.push(`⚠️ ${m.name}が不適性パート[${part}]に配置... (-2pt)`);
+                }
+            });
+
+            // 3. 特殊シナジー・コンボチェック
+            const skillNames = membersList.map(m => m.specialSkill.name);
+
+            // シナジー①: 絶対音感 × 鉄壁のリズム
+            if (skillNames.includes('絶対音感') && skillNames.includes('鉄壁のリズム')) {
+                comboBonus += 3;
+                comments.push(`🔥 【シナジー発動】「完璧なタイム＆ピッチ」コンボ！ (絶対音感 × 鉄壁のリズム) (+3pt)`);
+            }
+
+            // シナジー②: 爆発的表現力 × 極上のヴィブラート
+            if (skillNames.includes('爆発的表現力') && skillNames.includes('極上のヴィブラート')) {
+                comboBonus += 3;
+                comments.push(`✨ 【シナジー発動】「エモーショナルハーモニー」コンボ！ (爆発的表現力 × ヴィブラート) (+3pt)`);
+            }
+
+            // シナジー③: 重低音ボイス × グルーヴマスター
+            if (skillNames.includes('重低音ボイス') && skillNames.includes('グルーヴマスター')) {
+                comboBonus += 3;
+                comments.push(`⚡ 【シナジー発動】「最強リズムセクション」コンボ！ (重低音ボイス × グルーヴマスター) (+3pt)`);
+            }
+
+            // 平均値算出（能力値を100点満点のスコアベースに変換する際に、90〜100点が出にくいよう係数を調整）
+            const count = membersList.length || 1;
+            const avgPitch = pitchTotal / count;
+            const avgRhythm = rhythmTotal / count;
+            const avgExpress = expressTotal / count;
+
+            // 基本スコア：平均ステータスの70%をベースとし、ボーナスを加算する仕組み
+            const baseStatScore = (avgPitch * 0.25 + avgRhythm * 0.25 + avgExpress * 0.2); // 最大約70点
+            let totalScore = Math.round(baseStatScore + partMatchingBonus + comboBonus + 10); // 基準点10点をプラス
+
+            // 90点以上は超高評価（上限100点）
+            totalScore = Math.min(100, Math.max(30, totalScore));
+
+            return {
+                bandName,
+                membersMap,
+                totalScore,
+                avgPitch: Math.round(avgPitch),
+                avgRhythm: Math.round(avgRhythm),
+                avgExpress: Math.round(avgExpress),
+                comments
+            };
+        }
+
+        function renderFinalRankings(rankedBands) {
+            const listContainer = document.getElementById('ranking-list');
+            listContainer.innerHTML = '';
+
+            rankedBands.forEach((band, idx) => {
+                const isPlayer = band.bandName.includes("あなた");
+                const card = document.createElement('div');
+                card.className = `glass-panel p-5 rounded-2xl flex flex-wrap justify-between items-center gap-4 ${
+                    isPlayer ? 'border-2 border-purple-500/80 bg-purple-950/20' : 'border border-slate-800'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg ${
+                            idx === 0 ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30' : (idx === 1 ? 'bg-slate-300 text-slate-950' : 'bg-amber-800/60 text-amber-200')
+                        }">
+                            ${idx + 1}
+                        </div>
+                        <div>
+                            <h3 class="font-black text-lg text-white flex items-center gap-2">
+                                ${band.bandName}
+                                ${isPlayer ? '<span class="text-xs bg-purple-900/80 text-purple-200 border border-purple-500 px-2 py-0.5 rounded-full">YOUR BAND</span>' : ''}
+                            </h3>
+                            <div class="text-xs text-slate-400 mt-1">
+                                ピッチ: ${band.avgPitch} | リズム: ${band.avgRhythm} | 表現力: ${band.avgExpress}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500">
+                            ${band.totalScore} <span class="text-sm text-slate-400">点</span>
+                        </div>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+
+            // Feedback for player
+            const playerRes = rankedBands.find(b => b.bandName.includes("あなた"));
+            const feedbackContainer = document.getElementById('judges-feedback');
+            feedbackContainer.innerHTML = playerRes && playerRes.comments.length > 0 
+                ? playerRes.comments.map(c => `<p class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60">${c}</p>`).join('')
+                : `<p class="text-slate-400">スタンダードで安定したハーモニーの演奏でした！</p>`;
+        }
+
+        function restartGame() {
+            document.getElementById('step-4').classList.add('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+        }
+
+        // Initialize icons on DOM ready
+        window.onload = function() {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        };
+    </script>
+</body>
+</html>
